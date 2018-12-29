@@ -1,15 +1,15 @@
 //! Demonstrates loading prefabs using the Amethyst engine.
 
-use amethyst;
-
 use amethyst::{
-    assets::{PrefabLoader, PrefabLoaderSystem, RonFormat},
     core::TransformBundle,
+    ecs::*,
     prelude::*,
     renderer::{DrawShaded, PosNormTex},
     utils::{application_root_dir, scene::BasicScenePrefab},
     Error,
 };
+use amethyst_dynamic_prefab::*;
+use tap::*;
 
 type MyPrefabData = BasicScenePrefab<Vec<PosNormTex>>;
 
@@ -17,9 +17,9 @@ struct AssetsExample;
 
 impl SimpleState for AssetsExample {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
-        let prefab_handle = data.world.exec(|loader: PrefabLoader<'_, MyPrefabData>| {
-            loader.load("prefab/example.ron", RonFormat, (), ())
-        });
+        let prefab_handle = data
+            .world
+            .exec(|loader: ReadExpect<'_, PrefabLoader>| loader.load("prefab/example.ron"));
         data.world.create_entity().with(prefab_handle).build();
     }
 }
@@ -35,8 +35,10 @@ fn main() -> Result<(), Error> {
 
     let display_config_path = format!("{}/examples/prefab/resources/display_config.ron", app_root);
 
+    let prefab_bundle = DynamicPrefabBundle::new().tap(DynamicPrefabBundle::register_default_types);
+
     let game_data = GameDataBuilder::default()
-        .with(PrefabLoaderSystem::<MyPrefabData>::default(), "", &[])
+        .with_bundle(prefab_bundle)
         .with_bundle(TransformBundle::new())?
         .with_basic_renderer(display_config_path, DrawShaded::<PosNormTex>::new(), false)?;
 

@@ -12,4 +12,10 @@ members = [
 
 [dependencies]
 amethyst = "0.10.0"
+ron = "0.4.0"
+serde = "1.0"
 type-uuid = { path = "./type-uuid", features = ["amethyst"] }
+uuid = { version = "0.7.1", features = ["u128"] }
+
+[dev-dependencies]
+tap = "0.3.0"
