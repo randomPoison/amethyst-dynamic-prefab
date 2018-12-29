@@ -1,6 +1,6 @@
 #![enable(implicit_some)]
 [
-    (
+    {
         // TODO: Add support for graphics of some kind.
         //graphics: (
         //    mesh: Asset(File ("mesh/cube.obj", ObjFormat, ())),
@@ -8,33 +8,38 @@
         //        albedo: Data(Rgba((0.0, 0.0, 1.0, 1.0,), (channel: Srgb))),
         //    ),
         //),
-        transform: (
+
+        "f3d49cc2-c77e-4dc9-9e1f-c01e9279c999": (
             translation: (0.0, 0.0, 5.0),
             scale: (2.0, 2.0, 2.0),
         ),
-    ),
-    (
-        transform: Transform (
+    },
+    {
+        "f3d49cc2-c77e-4dc9-9e1f-c01e9279c999": Transform (
             translation: (5.0, -20.0, 15.0),
         ),
-        light: (
+
+        // Light
+        "41c40489-269b-4ef5-af7f-675a29473f86": (
             light: Point((
                 intensity: 100.0,
                 color: (1.0, 1.0, 1.0, 1.0),
                 radius: 1.0,
             )),
         ),
-    ),
-    (
-        transform: Transform (
+    },
+    {
+        "f3d49cc2-c77e-4dc9-9e1f-c01e9279c999": Transform (
             translation: (0.0, -20.0, 10.0),
             rotation: (0.7882256, 0.6153864, 0.0, 0.0),
         ),
-        camera: Perspective((
+
+        // Camera
+        "15ed1b66-537e-4e75-b52d-cd4659ba53bf": Perspective((
             aspect: 1.0,
             fovy: 1.0471975512,
             znear: 0.1,
             zfar: 2000.0,
         )),
-    ),
+    },
 ]

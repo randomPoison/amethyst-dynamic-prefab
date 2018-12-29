@@ -1,4 +1,5 @@
 use amethyst::assets::*;
+use amethyst::core::bundle::SystemBundle;
 use amethyst::ecs::shred::Resource;
 use amethyst::ecs::*;
 use serde::de::DeserializeOwned;
@@ -18,7 +19,7 @@ pub struct DynamicPrefabBundle {
 }
 
 impl DynamicPrefabBundle {
-    pub fn new() {
+    pub fn new() -> Self {
         Default::default()
     }
 
@@ -44,6 +45,15 @@ impl DynamicPrefabBundle {
         let uuid = Uuid::from(Uuid::from_u128(T::UUID));
         let serializer = Box::new(ResourceWrapper::<T>(PhantomData)) as Box<SerializeDynamic>;
         self.serializer_map.insert(uuid, serializer);
+    }
+}
+
+impl<'a, 'b> SystemBundle<'a, 'b> for DynamicPrefabBundle {
+    fn build(
+        self,
+        dispatcher: &mut DispatcherBuilder<'a, 'b>,
+    ) -> amethyst::core::bundle::Result<()> {
+        Ok(())
     }
 }
 
