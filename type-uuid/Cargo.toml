@@ -6,3 +6,4 @@ edition = "2018"
 
 [dependencies]
 amethyst = { version = "0.10.0", optional = true }
+serde = "1.0"

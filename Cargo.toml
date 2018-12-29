@@ -11,4 +11,5 @@ members = [
 ]
 
 [dependencies]
+amethyst = "0.10.0"
 type-uuid = { path = "./type-uuid", features = ["amethyst"] }
