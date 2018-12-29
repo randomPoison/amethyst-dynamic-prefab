@@ -1,0 +1,7 @@
+[package]
+name = "uuid-gen"
+version = "0.1.0"
+authors = ["Jacob Kiesel <kieseljake@gmail.com>", "David LeGare <dlegare.1001@gmail.com>"]
+
+[dependencies]
+uuid = { version = "0.7", features = ["v4"] }

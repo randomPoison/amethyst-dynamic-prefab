@@ -1,0 +1,14 @@
+[package]
+name = "amethyst-dynamic-prefab"
+version = "0.1.0"
+authors = ["David LeGare <dlegare.1001@gmail.com>"]
+edition = "2018"
+
+[workspace]
+members = [
+    "type-uuid",
+    "uuid-gen",
+]
+
+[dependencies]
+type-uuid = { path = "./type-uuid", features = ["amethyst"] }

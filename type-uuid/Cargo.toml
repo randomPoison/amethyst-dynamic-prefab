@@ -1,0 +1,8 @@
+[package]
+name = "type-uuid"
+version = "0.1.0"
+authors = ["Jacob Kiesel <kieseljake@gmail.com>", "David LeGare <dlegare.1001@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+amethyst = { version = "0.10.0", optional = true }
