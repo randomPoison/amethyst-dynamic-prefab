@@ -12,8 +12,11 @@ members = [
 
 [dependencies]
 amethyst = "0.10.0"
+log = "0.4.6"
 ron = "0.4.0"
 serde = "1.0"
+shred = "0.7.1"
+shred-derive = "0.5.1"
 type-uuid = { path = "./type-uuid", features = ["amethyst"] }
 uuid = { version = "0.7.1", features = ["u128"] }
 

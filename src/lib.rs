@@ -1,6 +1,6 @@
+use crate::system::PrefabLoaderSystem;
 use amethyst::assets::*;
 use amethyst::core::bundle::SystemBundle;
-use amethyst::ecs::shred::Resource;
 use amethyst::ecs::*;
 use serde::de::DeserializeOwned;
 use serde::*;
@@ -10,10 +10,60 @@ use type_uuid::*;
 use uuid::Uuid;
 
 mod loader;
+mod system;
 
-pub use crate::loader::PrefabLoader;
+pub use crate::loader::DynamicPrefabLoader;
 
 type SerializerMap = HashMap<Uuid, Box<dyn SerializeDynamic>>;
+type DynamicPrefabStorage = AssetStorage<DynamicPrefab>;
+
+/// The serialized representation of a prefab.
+type DynamicPrefabData = Vec<HashMap<Uuid, ron::Value>>;
+
+/// Asset type for dynamic prefabs.
+pub struct DynamicPrefab {
+    tag: Option<u64>,
+    entities: DynamicPrefabData,
+    counter: Option<ProgressCounter>,
+}
+
+impl DynamicPrefab {
+    /// Check if sub asset loading have been triggered.
+    pub fn loading(&self) -> bool {
+        self.counter.is_some()
+    }
+
+    /// Get the `ProgressCounter` for the sub asset loading.
+    ///
+    /// ### Panics
+    ///
+    /// If sub asset loading has not been triggered.
+    pub fn progress(&self) -> &ProgressCounter {
+        self.counter
+            .as_ref()
+            .expect("Sub asset loading has not been triggered")
+    }
+}
+
+impl Asset for DynamicPrefab {
+    const NAME: &'static str = "DYNAMIC_PREFAB";
+    type Data = Self;
+    type HandleStorage = FlaggedStorage<Handle<Self>, DenseVecStorage<Handle<Self>>>;
+}
+
+impl<'a> Deserialize<'a> for DynamicPrefab {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'a>,
+    {
+        let data = DynamicPrefabData::deserialize(deserializer)?;
+        Ok(DynamicPrefab {
+            tag: None,
+            entities: data,
+            counter: None,
+        })
+    }
+}
 
 #[derive(Default)]
 pub struct DynamicPrefabBundle {
@@ -39,15 +89,6 @@ impl DynamicPrefabBundle {
         // let serializer = Box::new(ComponentWrapper::<T>(PhantomData)) as Box<SerializeDynamic>;
         // self.serializer_map.insert(uuid, serializer);
     }
-
-    pub fn register_resource<T>(&mut self)
-    where
-        T: Resource + Serialize + DeserializeOwned + TypeUuid,
-    {
-        let uuid = Uuid::from(Uuid::from_u128(T::UUID));
-        let serializer = Box::new(ResourceWrapper::<T>(PhantomData)) as Box<SerializeDynamic>;
-        self.serializer_map.insert(uuid, serializer);
-    }
 }
 
 impl<'a, 'b> SystemBundle<'a, 'b> for DynamicPrefabBundle {
@@ -55,54 +96,17 @@ impl<'a, 'b> SystemBundle<'a, 'b> for DynamicPrefabBundle {
         self,
         dispatcher: &mut DispatcherBuilder<'a, 'b>,
     ) -> amethyst::core::bundle::Result<()> {
-        struct RegisterResourceSystem {
-            serializer_map: Option<SerializerMap>,
-        }
-
-        impl<'a> System<'a> for RegisterResourceSystem {
-            type SystemData = ();
-
-            fn run(&mut self, _: Self::SystemData) {}
-
-            fn setup(&mut self, resources: &mut Resources) {
-                println!("!!!!!!!!!!!!!!! Registering DynamicPrefabBundle");
-                resources.insert(PrefabLoader {
-                    serializer_map: self.serializer_map.take().unwrap(),
-                });
-            }
-        }
-
-        println!("~~~~~~~~~~~~~~~~~~~ Registering system");
-        dispatcher.add(
-            RegisterResourceSystem {
-                serializer_map: Some(self.serializer_map),
-            },
-            "",
-            &[],
-        );
+        dispatcher.add(PrefabLoaderSystem::new(self.serializer_map), "", &[]);
 
         Ok(())
     }
 }
 
-/// Asset type for dynamic prefabs.
-pub struct DynamicPrefab;
-
-impl Asset for DynamicPrefab {
-    const NAME: &'static str = "DYNAMIC_PREFAB";
-    type Data = Self;
-    type HandleStorage = FlaggedStorage<Handle<Self>, DenseVecStorage<Handle<Self>>>;
-}
-
 struct ComponentWrapper<T>(PhantomData<T>);
-
-struct ResourceWrapper<T>(PhantomData<T>);
 
 impl<'a, T> SerializeDynamic for ComponentWrapper<T> where
     T: PrefabData<'a> + Serialize + DeserializeOwned + Send + Sync
 {
 }
-
-impl<T> SerializeDynamic for ResourceWrapper<T> where T: Resource + Serialize + DeserializeOwned {}
 
 trait SerializeDynamic: Send + Sync {}

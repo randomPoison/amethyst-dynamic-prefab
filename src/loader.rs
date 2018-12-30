@@ -1,53 +1,43 @@
-use crate::{DynamicPrefab, SerializerMap};
-use amethyst::assets::*;
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::prelude::*;
-use std::io::BufReader;
-use std::path::Path;
-use uuid::*;
+use crate::{DynamicPrefab, DynamicPrefabStorage};
+use amethyst::{assets::*, ecs::prelude::*};
+use shred_derive::*;
 
-pub struct PrefabLoader {
-    pub(crate) serializer_map: SerializerMap,
+#[derive(SystemData)]
+pub struct DynamicPrefabLoader<'a> {
+    loader: ReadExpect<'a, Loader>,
+    storage: Read<'a, DynamicPrefabStorage>,
 }
 
-impl PrefabLoader {
-    pub(crate) fn new() -> Self {
-        PrefabLoader {
-            serializer_map: Default::default(),
-        }
-    }
-
-    pub fn load<P>(&self, path: P) -> Handle<DynamicPrefab>
+impl<'a> DynamicPrefabLoader<'a> {
+    pub fn load<N, G>(&self, name: N, progress: G) -> Handle<DynamicPrefab>
     where
-        P: AsRef<Path>,
+        N: Into<String>,
+        G: Progress,
     {
-        let file = File::open(path).expect("Failed to read prefab file");
-        let mut buf_reader = BufReader::new(file);
-        let mut contents = String::new();
-        buf_reader
-            .read_to_string(&mut contents)
-            .expect("Failed to read prefab to string");
-
-        let partial_data: DynamicPrefabData =
-            ron::de::from_str(&contents).expect("Failed to deserialize dynamic prefab data");
-
-        println!("Prefab data: {:#?}", partial_data);
-
-        unimplemented!("Return a handle to the dynamic prefab")
+        self.loader
+            .load(name, RonFormat, (), progress, &self.storage)
     }
 }
 
-/// The serialized representation of a prefab.
-type DynamicPrefabData = Vec<HashMap<Uuid, ron::Value>>;
+/// Tag placed on entities created by the prefab system.
+///
+/// The tag value match the tag value of the `Prefab` the `Entity` was created from.
+pub struct DynamicPrefabTag {
+    tag: u64,
+}
 
-#[cfg(test)]
-mod test {
-    use crate::*;
-
-    #[test]
-    fn load_example() {
-        let loader = PrefabLoader::new();
-        loader.load("examples/assets/prefab/example.ron");
+impl DynamicPrefabTag {
+    /// Create a new tag
+    pub fn new(tag: u64) -> Self {
+        DynamicPrefabTag { tag }
     }
+
+    /// Get the tag
+    pub fn tag(&self) -> u64 {
+        self.tag
+    }
+}
+
+impl Component for DynamicPrefabTag {
+    type Storage = DenseVecStorage<Self>;
 }

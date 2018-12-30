@@ -5,22 +5,22 @@ use amethyst::{
     ecs::*,
     prelude::*,
     renderer::{DrawShaded, PosNormTex},
-    utils::{application_root_dir, scene::BasicScenePrefab},
+    utils::application_root_dir,
     Error,
 };
 use amethyst_dynamic_prefab::*;
 use amethyst_editor_sync::*;
 use tap::*;
 
-type MyPrefabData = BasicScenePrefab<Vec<PosNormTex>>;
+// type MyPrefabData = BasicScenePrefab<Vec<PosNormTex>>;
 
 struct AssetsExample;
 
 impl SimpleState for AssetsExample {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
-        let prefab_handle = data.world.exec(|loader: ReadExpect<'_, PrefabLoader>| {
-            loader.load("examples/assets/prefab/example.ron")
-        });
+        let prefab_handle = data
+            .world
+            .exec(|loader: DynamicPrefabLoader<'_>| loader.load("prefab/example.ron", ()));
         data.world.create_entity().with(prefab_handle).build();
     }
 }
