@@ -1,5 +1,5 @@
 use crate::system::PrefabLoaderSystem;
-use crate::SerializerMap;
+use crate::{DynamicPrefabAccessor, SerializerMap};
 use amethyst::assets::PrefabData;
 use amethyst::core::bundle::SystemBundle;
 use amethyst::ecs::*;
@@ -38,8 +38,12 @@ impl<'a, 'b> SystemBundle<'a, 'b> for DynamicPrefabBundle {
         self,
         dispatcher: &mut DispatcherBuilder<'a, 'b>,
     ) -> amethyst::core::bundle::Result<()> {
-        dispatcher.add(PrefabLoaderSystem::new(self.serializer_map), "", &[]);
-
+        let accessor = unimplemented!("Build accessor");
+        dispatcher.add(
+            PrefabLoaderSystem::new(self.serializer_map, accessor),
+            "",
+            &[],
+        );
         Ok(())
     }
 }

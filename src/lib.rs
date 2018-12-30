@@ -2,6 +2,7 @@ use crate::system::PrefabLoaderSystem;
 use amethyst::assets::{Asset, AssetStorage, Handle, PrefabData, ProgressCounter};
 use amethyst::core::bundle::SystemBundle;
 use amethyst::ecs::*;
+use amethyst::shred::*;
 use serde::de::DeserializeOwned;
 use serde::*;
 use std::collections::HashMap;
@@ -77,9 +78,9 @@ where
         &self,
         data: &ron::Value,
         entity: Entity,
-        resources: &mut Resources,
+        resources: &DynamicPrefabSystemData,
     ) -> Result<(), String> {
-        unimplemented!("Instantiate the component for realsies");
+        unimplemented!("Instantiate the component for realsies: {:?}", data);
     }
 }
 
@@ -88,6 +89,26 @@ trait SerializeDynamic: Send + Sync {
         &self,
         data: &ron::Value,
         entity: Entity,
-        resources: &mut Resources,
+        resources: &DynamicPrefabSystemData,
     ) -> Result<(), String>;
+}
+
+type DynamicPrefabSystemData<'a> = HashMap<ResourceId, &'a Resource>;
+
+struct DynamicPrefabAccessor {
+    resources: Vec<ResourceId>,
+}
+
+impl Accessor for DynamicPrefabAccessor {
+    fn try_new() -> Option<Self> {
+        None
+    }
+
+    fn reads(&self) -> Vec<ResourceId> {
+        self.resources.clone()
+    }
+
+    fn writes(&self) -> Vec<ResourceId> {
+        self.resources.clone()
+    }
 }
