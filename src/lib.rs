@@ -13,9 +13,11 @@ mod loader;
 
 pub use crate::loader::PrefabLoader;
 
+type SerializerMap = HashMap<Uuid, Box<dyn SerializeDynamic>>;
+
 #[derive(Default)]
 pub struct DynamicPrefabBundle {
-    serializer_map: HashMap<Uuid, Box<dyn SerializeDynamic>>,
+    serializer_map: SerializerMap,
 }
 
 impl DynamicPrefabBundle {
@@ -53,6 +55,32 @@ impl<'a, 'b> SystemBundle<'a, 'b> for DynamicPrefabBundle {
         self,
         dispatcher: &mut DispatcherBuilder<'a, 'b>,
     ) -> amethyst::core::bundle::Result<()> {
+        struct RegisterResourceSystem {
+            serializer_map: Option<SerializerMap>,
+        }
+
+        impl<'a> System<'a> for RegisterResourceSystem {
+            type SystemData = ();
+
+            fn run(&mut self, _: Self::SystemData) {}
+
+            fn setup(&mut self, resources: &mut Resources) {
+                println!("!!!!!!!!!!!!!!! Registering DynamicPrefabBundle");
+                resources.insert(PrefabLoader {
+                    serializer_map: self.serializer_map.take().unwrap(),
+                });
+            }
+        }
+
+        println!("~~~~~~~~~~~~~~~~~~~ Registering system");
+        dispatcher.add(
+            RegisterResourceSystem {
+                serializer_map: Some(self.serializer_map),
+            },
+            "",
+            &[],
+        );
+
         Ok(())
     }
 }

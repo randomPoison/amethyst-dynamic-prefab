@@ -18,7 +18,7 @@ struct AssetsExample;
 
 impl SimpleState for AssetsExample {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
-        let prefab_handle = data.world.exec(|loader: Read<'_, PrefabLoader>| {
+        let prefab_handle = data.world.exec(|loader: ReadExpect<'_, PrefabLoader>| {
             loader.load("examples/assets/prefab/example.ron")
         });
         data.world.create_entity().with(prefab_handle).build();

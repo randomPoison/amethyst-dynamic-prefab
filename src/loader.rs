@@ -1,4 +1,4 @@
-use crate::{DynamicPrefab, SerializeDynamic};
+use crate::{DynamicPrefab, SerializerMap};
 use amethyst::assets::*;
 use std::collections::HashMap;
 use std::fs::File;
@@ -7,12 +7,17 @@ use std::io::BufReader;
 use std::path::Path;
 use uuid::*;
 
-#[derive(Default)]
 pub struct PrefabLoader {
-    serializer_map: HashMap<Uuid, Box<dyn SerializeDynamic>>,
+    pub(crate) serializer_map: SerializerMap,
 }
 
 impl PrefabLoader {
+    pub(crate) fn new() -> Self {
+        PrefabLoader {
+            serializer_map: Default::default(),
+        }
+    }
+
     pub fn load<P>(&self, path: P) -> Handle<DynamicPrefab>
     where
         P: AsRef<Path>,
@@ -42,7 +47,7 @@ mod test {
 
     #[test]
     fn load_example() {
-        let loader = PrefabLoader::default();
+        let loader = PrefabLoader::new();
         loader.load("examples/assets/prefab/example.ron");
     }
 }
