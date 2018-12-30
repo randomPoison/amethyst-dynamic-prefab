@@ -1,5 +1,5 @@
 use crate::system::PrefabLoaderSystem;
-use amethyst::assets::*;
+use amethyst::assets::{Asset, AssetStorage, Handle, PrefabData, ProgressCounter};
 use amethyst::core::bundle::SystemBundle;
 use amethyst::ecs::*;
 use serde::de::DeserializeOwned;
@@ -9,9 +9,11 @@ use std::marker::PhantomData;
 use type_uuid::*;
 use uuid::Uuid;
 
+mod bundle;
 mod loader;
 mod system;
 
+pub use crate::bundle::DynamicPrefabBundle;
 pub use crate::loader::DynamicPrefabLoader;
 
 type SerializerMap = HashMap<Uuid, Box<dyn SerializeDynamic>>;
@@ -65,48 +67,27 @@ impl<'a> Deserialize<'a> for DynamicPrefab {
     }
 }
 
-#[derive(Default)]
-pub struct DynamicPrefabBundle {
-    serializer_map: SerializerMap,
-}
-
-impl DynamicPrefabBundle {
-    pub fn new() -> Self {
-        Default::default()
-    }
-
-    pub fn register_default_types(&mut self) {
-        self.register_component::<amethyst::core::Transform>();
-        self.register_component::<amethyst::renderer::CameraPrefab>();
-        self.register_component::<amethyst::renderer::LightPrefab>();
-    }
-
-    pub fn register_component<'a, T>(&mut self)
-    where
-        T: PrefabData<'a> + Serialize + DeserializeOwned + TypeUuid,
-    {
-        // let uuid = Uuid::from(Uuid::from_u128(T::UUID));
-        // let serializer = Box::new(ComponentWrapper::<T>(PhantomData)) as Box<SerializeDynamic>;
-        // self.serializer_map.insert(uuid, serializer);
-    }
-}
-
-impl<'a, 'b> SystemBundle<'a, 'b> for DynamicPrefabBundle {
-    fn build(
-        self,
-        dispatcher: &mut DispatcherBuilder<'a, 'b>,
-    ) -> amethyst::core::bundle::Result<()> {
-        dispatcher.add(PrefabLoaderSystem::new(self.serializer_map), "", &[]);
-
-        Ok(())
-    }
-}
-
 struct ComponentWrapper<T>(PhantomData<T>);
 
-impl<'a, T> SerializeDynamic for ComponentWrapper<T> where
-    T: PrefabData<'a> + Serialize + DeserializeOwned + Send + Sync
+impl<'a, T> SerializeDynamic for ComponentWrapper<T>
+where
+    T: PrefabData<'a> + Serialize + DeserializeOwned + Send + Sync,
 {
+    fn instantiate(
+        &self,
+        data: &ron::Value,
+        entity: Entity,
+        resources: &mut Resources,
+    ) -> Result<(), String> {
+        unimplemented!("Instantiate the component for realsies");
+    }
 }
 
-trait SerializeDynamic: Send + Sync {}
+trait SerializeDynamic: Send + Sync {
+    fn instantiate(
+        &self,
+        data: &ron::Value,
+        entity: Entity,
+        resources: &mut Resources,
+    ) -> Result<(), String>;
+}
