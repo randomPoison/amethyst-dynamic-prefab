@@ -32,7 +32,7 @@ impl DynamicPrefabBundle {
     where
         T: 'static + PrefabData<'a> + Serialize + DeserializeOwned + TypeUuid + Send + Sync,
     {
-        let uuid = Uuid::from(Uuid::from_u128(T::UUID));
+        let uuid = Uuid::from(Uuid::from_bytes(T::UUID));
         debug!("Registering component with UUID {}", uuid);
 
         let serializer =
