@@ -1,6 +1,7 @@
 use amethyst::assets::{Asset, AssetStorage, Handle, PrefabData, PrefabError, ProgressCounter};
 use amethyst::ecs::*;
 use amethyst::shred::ResourceId;
+use log::*;
 use serde::de::DeserializeOwned;
 use serde::*;
 use std::collections::HashMap;
@@ -78,6 +79,8 @@ where
         resources: &'d Resources,
         entities: &'e [Entity],
     ) -> Result<(), PrefabError> {
+        debug!("Deserializing from {:?}", data);
+
         let prefab_data = T::deserialize(data.clone())
             .map_err(|err| PrefabError::Custom(amethyst::ecs::error::BoxedErr::new(err)))?;
         let mut system_data = T::SystemData::fetch(resources);

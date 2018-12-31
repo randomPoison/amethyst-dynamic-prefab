@@ -9,13 +9,20 @@ pub struct DynamicPrefabLoader<'a> {
 }
 
 impl<'a> DynamicPrefabLoader<'a> {
-    pub fn load<N, G>(&self, name: N, progress: G) -> Handle<DynamicPrefab>
+    pub fn load<F, N, P>(
+        &self,
+        name: N,
+        format: F,
+        options: F::Options,
+        progress: P,
+    ) -> Handle<DynamicPrefab>
     where
+        F: Format<DynamicPrefab>,
         N: Into<String>,
-        G: Progress,
+        P: Progress,
     {
         self.loader
-            .load(name, RonFormat, (), progress, &self.storage)
+            .load(name, format, options, progress, &self.storage)
     }
 }
 

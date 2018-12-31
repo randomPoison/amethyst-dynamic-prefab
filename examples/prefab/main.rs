@@ -1,6 +1,7 @@
 //! Demonstrates loading prefabs using the Amethyst engine.
 
 use amethyst::{
+    assets::RonFormat,
     core::TransformBundle,
     ecs::*,
     prelude::*,
@@ -18,9 +19,9 @@ struct AssetsExample;
 
 impl SimpleState for AssetsExample {
     fn on_start(&mut self, data: StateData<'_, GameData<'_, '_>>) {
-        let prefab_handle = data
-            .world
-            .exec(|loader: DynamicPrefabLoader<'_>| loader.load("prefab/example.ron", ()));
+        let prefab_handle = data.world.exec(|loader: DynamicPrefabLoader<'_>| {
+            loader.load("prefab/example.ron", RonFormat, (), ())
+        });
         data.world.create_entity().with(prefab_handle).build();
     }
 }
