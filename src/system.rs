@@ -1,11 +1,8 @@
 use crate::loader::*;
-use crate::{
-    DynamicPrefab, DynamicPrefabAccessor, DynamicPrefabStorage, DynamicPrefabSystemData,
-    SerializerMap,
-};
+use crate::{DynamicPrefab, DynamicPrefabAccessor, DynamicPrefabStorage, SerializerMap};
 use amethyst::{
     assets::*,
-    core::{ArcThreadPool, Parent, Time},
+    core::{ArcThreadPool, Time},
     ecs::prelude::*,
     shred::*,
 };
@@ -41,7 +38,7 @@ impl PrefabLoaderSystem {
 
 pub(crate) struct Data<'a> {
     static_data: StaticData<'a>,
-    dynamic_data: DynamicPrefabSystemData<'a>,
+    dynamic_data: &'a Resources,
 }
 
 #[derive(SystemData)]
@@ -69,7 +66,7 @@ impl<'a> DynamicSystemData<'a> for Data<'a> {
             static_data: <StaticData as SystemData>::fetch(resources),
 
             // TODO: Actually fetch the storages for all the registered component types.
-            dynamic_data: Default::default(),
+            dynamic_data: resources,
         }
     }
 }
@@ -174,6 +171,7 @@ impl<'a> System<'a> for PrefabLoaderSystem {
                             serialized_component,
                             self.entities[index],
                             &dynamic_data,
+                            &self.entities,
                         ) {
                             error!("Failed to instantiate component from prefab: {:?}", err);
                         }

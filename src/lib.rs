@@ -1,13 +1,10 @@
-use crate::system::PrefabLoaderSystem;
-use amethyst::assets::{Asset, AssetStorage, Handle, PrefabData, ProgressCounter};
-use amethyst::core::bundle::SystemBundle;
+use amethyst::assets::{Asset, AssetStorage, Handle, PrefabData, PrefabError, ProgressCounter};
 use amethyst::ecs::*;
-use amethyst::shred::*;
+use amethyst::shred::ResourceId;
 use serde::de::DeserializeOwned;
 use serde::*;
 use std::collections::HashMap;
 use std::marker::PhantomData;
-use type_uuid::*;
 use uuid::Uuid;
 
 mod bundle;
@@ -70,17 +67,21 @@ impl<'a> Deserialize<'a> for DynamicPrefab {
 
 struct ComponentWrapper<T>(PhantomData<T>);
 
-impl<'a, T> SerializeDynamic for ComponentWrapper<T>
+impl<T> SerializeDynamic for ComponentWrapper<T>
 where
-    T: PrefabData<'a> + Serialize + DeserializeOwned + Send + Sync,
+    for<'a> T: PrefabData<'a, Result = ()> + Serialize + DeserializeOwned + Send + Sync,
 {
-    fn instantiate(
-        &self,
-        data: &ron::Value,
+    fn instantiate<'b, 'c, 'd, 'e>(
+        &'b self,
+        data: &'c ron::Value,
         entity: Entity,
-        resources: &DynamicPrefabSystemData,
-    ) -> Result<(), String> {
-        unimplemented!("Instantiate the component for realsies: {:?}", data);
+        resources: &'d Resources,
+        entities: &'e [Entity],
+    ) -> Result<(), PrefabError> {
+        let prefab_data = T::deserialize(data.clone())
+            .map_err(|err| PrefabError::Custom(amethyst::ecs::error::BoxedErr::new(err)))?;
+        let mut system_data = T::SystemData::fetch(resources);
+        prefab_data.add_to_entity(entity, &mut system_data, entities)
     }
 }
 
@@ -89,11 +90,10 @@ trait SerializeDynamic: Send + Sync {
         &self,
         data: &ron::Value,
         entity: Entity,
-        resources: &DynamicPrefabSystemData,
-    ) -> Result<(), String>;
+        resources: &Resources,
+        entities: &[Entity],
+    ) -> Result<(), PrefabError>;
 }
-
-type DynamicPrefabSystemData<'a> = HashMap<ResourceId, &'a Resource>;
 
 struct DynamicPrefabAccessor {
     reads: Vec<ResourceId>,

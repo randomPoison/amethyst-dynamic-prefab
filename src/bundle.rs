@@ -28,9 +28,11 @@ impl DynamicPrefabBundle {
         self.register_component::<amethyst::renderer::LightPrefab>();
     }
 
-    pub fn register_component<'a, T>(&mut self)
+    pub fn register_component<T>(&mut self)
     where
-        T: 'static + PrefabData<'a> + Serialize + DeserializeOwned + TypeUuid + Send + Sync,
+        T: 'static,
+        for<'a> T:
+            PrefabData<'a, Result = ()> + Serialize + DeserializeOwned + TypeUuid + Send + Sync,
     {
         let uuid = Uuid::from(Uuid::from_bytes(T::UUID));
         debug!("Registering component with UUID {}", uuid);
