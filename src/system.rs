@@ -193,4 +193,8 @@ impl<'a> System<'a> for PrefabLoaderSystem {
             <WriteStorage<Handle<DynamicPrefab>> as SystemData>::fetch(&res).register_reader(),
         );
     }
+
+    fn accessor<'b>(&'b self) -> AccessorCow<'a, 'b, Self> {
+        AccessorCow::Ref(&self.accessor)
+    }
 }

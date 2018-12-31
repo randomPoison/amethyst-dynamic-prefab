@@ -96,7 +96,8 @@ trait SerializeDynamic: Send + Sync {
 type DynamicPrefabSystemData<'a> = HashMap<ResourceId, &'a Resource>;
 
 struct DynamicPrefabAccessor {
-    resources: Vec<ResourceId>,
+    reads: Vec<ResourceId>,
+    writes: Vec<ResourceId>,
 }
 
 impl Accessor for DynamicPrefabAccessor {
@@ -105,10 +106,10 @@ impl Accessor for DynamicPrefabAccessor {
     }
 
     fn reads(&self) -> Vec<ResourceId> {
-        self.resources.clone()
+        self.reads.clone()
     }
 
     fn writes(&self) -> Vec<ResourceId> {
-        self.resources.clone()
+        self.writes.clone()
     }
 }

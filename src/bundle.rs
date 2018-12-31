@@ -1,15 +1,20 @@
 use crate::system::PrefabLoaderSystem;
-use crate::{DynamicPrefabAccessor, SerializerMap};
+use crate::{ComponentWrapper, DynamicPrefabAccessor, SerializeDynamic, SerializerMap};
 use amethyst::assets::PrefabData;
 use amethyst::core::bundle::SystemBundle;
 use amethyst::ecs::*;
+use amethyst::shred::*;
+use log::*;
 use serde::de::DeserializeOwned;
 use serde::*;
 use type_uuid::*;
+use uuid::*;
 
 #[derive(Default)]
 pub struct DynamicPrefabBundle {
     serializer_map: SerializerMap,
+    reads: Vec<ResourceId>,
+    writes: Vec<ResourceId>,
 }
 
 impl DynamicPrefabBundle {
@@ -25,11 +30,19 @@ impl DynamicPrefabBundle {
 
     pub fn register_component<'a, T>(&mut self)
     where
-        T: PrefabData<'a> + Serialize + DeserializeOwned + TypeUuid,
+        T: 'static + PrefabData<'a> + Serialize + DeserializeOwned + TypeUuid + Send + Sync,
     {
-        // let uuid = Uuid::from(Uuid::from_u128(T::UUID));
-        // let serializer = Box::new(ComponentWrapper::<T>(PhantomData)) as Box<SerializeDynamic>;
-        // self.serializer_map.insert(uuid, serializer);
+        let uuid = Uuid::from(Uuid::from_u128(T::UUID));
+        debug!("Registering component with UUID {}", uuid);
+
+        let serializer =
+            Box::new(ComponentWrapper::<T>(Default::default())) as Box<SerializeDynamic>;
+        self.serializer_map.insert(uuid, serializer);
+
+        // Add a record of all the resource types that component needs in order to be
+        // instantiated.
+        self.reads.extend_from_slice(&T::SystemData::reads());
+        self.writes.extend_from_slice(&T::SystemData::writes());
     }
 }
 
@@ -38,7 +51,11 @@ impl<'a, 'b> SystemBundle<'a, 'b> for DynamicPrefabBundle {
         self,
         dispatcher: &mut DispatcherBuilder<'a, 'b>,
     ) -> amethyst::core::bundle::Result<()> {
-        let accessor = unimplemented!("Build accessor");
+        let accessor = DynamicPrefabAccessor {
+            reads: self.reads,
+            writes: self.writes,
+        };
+
         dispatcher.add(
             PrefabLoaderSystem::new(self.serializer_map, accessor),
             "",
