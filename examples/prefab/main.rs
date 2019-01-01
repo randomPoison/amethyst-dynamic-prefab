@@ -10,7 +10,7 @@ use amethyst::{
     Error,
 };
 use amethyst_dynamic_prefab::*;
-// use amethyst_editor_sync::*;
+use amethyst_editor_sync::*;
 use tap::*;
 
 // type MyPrefabData = BasicScenePrefab<Vec<PosNormTex>>;
@@ -38,11 +38,11 @@ fn main() -> Result<(), Error> {
     let display_config_path = app_root.join("examples/prefab/resources/display_config.ron");
 
     let prefab_bundle = DynamicPrefabBundle::new().tap(DynamicPrefabBundle::register_default_types);
-    // let editor_bundle = SyncEditorBundle::new().tap(SyncEditorBundle::sync_default_types);
+    let editor_bundle = SyncEditorBundle::new().tap(SyncEditorBundle::sync_default_types);
 
     let game_data = GameDataBuilder::default()
         .with_bundle(prefab_bundle)?
-        // .with_bundle(editor_bundle)?
+        .with_bundle(editor_bundle)?
         .with_bundle(TransformBundle::new())?
         .with_basic_renderer(display_config_path, DrawShaded::<PosNormTex>::new(), false)?;
 

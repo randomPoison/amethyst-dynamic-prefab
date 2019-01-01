@@ -21,8 +21,9 @@ type-uuid = { path = "./type-uuid", features = ["amethyst"] }
 uuid = { version = "0.7.1", features = ["u128"] }
 
 [dev-dependencies]
-# amethyst-editor-sync = "0.4.0"
+amethyst-editor-sync = "0.4.0"
 tap = "0.3.0"
 
 [patch.crates-io]
 amethyst = { git = "https://github.com/randomPoison/amethyst", branch = "fix-json-feature" }
+amethyst-editor-sync = { git = "https://github.com/amethyst/amethyst-editor-sync" }
