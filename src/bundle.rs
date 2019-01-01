@@ -7,6 +7,7 @@ use amethyst::shred::*;
 use log::*;
 use serde::de::DeserializeOwned;
 use serde::*;
+use type_uuid::amethyst_types::*;
 use type_uuid::*;
 use uuid::*;
 
@@ -26,6 +27,7 @@ impl DynamicPrefabBundle {
         self.register_component::<amethyst::core::Transform>();
         self.register_component::<amethyst::renderer::CameraPrefab>();
         self.register_component::<amethyst::renderer::LightPrefab>();
+        self.register_component::<ObjGraphics>();
     }
 
     pub fn register_component<T>(&mut self)

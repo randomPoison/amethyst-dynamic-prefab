@@ -1,5 +1,5 @@
 #[cfg(feature = "amethyst")]
-mod amethyst_types;
+pub mod amethyst_types;
 
 /// Provides a statically defined UUID for a Rust type.  It's recommended to implement this
 /// by generating a v4 UUID, and transmuting it into a `u128`.  Here's an example of how to do so
