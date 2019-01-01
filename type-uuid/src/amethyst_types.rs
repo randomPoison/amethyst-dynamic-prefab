@@ -1,6 +1,4 @@
 use crate::*;
-use serde::de::DeserializeOwned;
-use serde::*;
 
 impl TypeUuid for amethyst::core::Transform {
     const UUID: uuid::Bytes = [

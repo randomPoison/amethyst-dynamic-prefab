@@ -11,15 +11,18 @@ members = [
 ]
 
 [dependencies]
-amethyst = "0.10.0"
+amethyst = { version = "0.10.0", features = ["json"] }
 log = "0.4.6"
-ron = "0.4.0"
-serde = "1.0"
+serde = "1.0.84"
+serde_json = "1.0.34"
 shred = "0.7.1"
 shred-derive = "0.5.1"
 type-uuid = { path = "./type-uuid", features = ["amethyst"] }
 uuid = { version = "0.7.1", features = ["u128"] }
 
 [dev-dependencies]
-amethyst-editor-sync = "0.4.0"
+# amethyst-editor-sync = "0.4.0"
 tap = "0.3.0"
+
+[patch.crates-io]
+amethyst = { git = "https://github.com/randomPoison/amethyst", branch = "fix-json-feature" }

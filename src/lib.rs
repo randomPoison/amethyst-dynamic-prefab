@@ -19,7 +19,7 @@ type SerializerMap = HashMap<Uuid, Box<dyn SerializeDynamic>>;
 type DynamicPrefabStorage = AssetStorage<DynamicPrefab>;
 
 /// The serialized representation of a prefab.
-type DynamicPrefabData = Vec<HashMap<Uuid, ron::Value>>;
+type DynamicPrefabData = Vec<HashMap<Uuid, serde_json::Value>>;
 
 /// Asset type for dynamic prefabs.
 pub struct DynamicPrefab {
@@ -74,7 +74,7 @@ where
 {
     fn instantiate<'b, 'c, 'd, 'e>(
         &'b self,
-        data: &'c ron::Value,
+        data: &'c serde_json::Value,
         entity: Entity,
         resources: &'d Resources,
         entities: &'e [Entity],
@@ -91,7 +91,7 @@ where
 trait SerializeDynamic: Send + Sync {
     fn instantiate(
         &self,
-        data: &ron::Value,
+        data: &serde_json::Value,
         entity: Entity,
         resources: &Resources,
         entities: &[Entity],
