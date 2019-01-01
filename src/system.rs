@@ -86,10 +86,9 @@ impl<'a> System<'a> for PrefabLoaderSystem {
                 d.tag = Some(self.next_tag);
                 self.next_tag += 1;
                 if !d.loading() {
-                    // TODO: Add support for loading sub-assets in dynamic prefabs.
-                    // if !d
-                    //     .load_sub_assets(&mut prefab_system_data)
-                    //     .chain_err(|| "Failed starting sub asset loading")?
+                    if !d
+                        .load_sub_assets(&self.serializer_map, &dynamic_data)
+                        .chain_err(|| "Failed starting sub asset loading")?
                     {
                         return Ok(ProcessingState::Loaded(d));
                     }
