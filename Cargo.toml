@@ -25,5 +25,7 @@ amethyst-editor-sync = "0.4.0"
 tap = "0.3.0"
 
 [patch.crates-io]
+# JSON support is broken in the 0.10.0 release, so we temporarily need to
+# use the master branch of amethyst in order to have JSON assets.
 amethyst = { git = "https://github.com/randomPoison/amethyst", branch = "fix-json-feature" }
 amethyst-editor-sync = { git = "https://github.com/amethyst/amethyst-editor-sync" }

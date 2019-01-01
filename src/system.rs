@@ -55,10 +55,12 @@ struct StaticData<'a> {
 impl<'a> DynamicSystemData<'a> for Data<'a> {
     type Accessor = DynamicPrefabAccessor;
 
-    fn setup(_accessor: &Self::Accessor, resources: &mut Resources) {
+    fn setup(accessor: &Self::Accessor, resources: &mut Resources) {
         <StaticData as SystemData>::setup(resources);
 
-        // TODO: Perform setup for any component types if necessary.
+        for setup in &accessor.setup {
+            setup.setup(resources);
+        }
     }
 
     fn fetch(_accessor: &Self::Accessor, resources: &'a Resources) -> Self {

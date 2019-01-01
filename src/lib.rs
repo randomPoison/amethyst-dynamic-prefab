@@ -66,9 +66,7 @@ impl<'a> Deserialize<'a> for DynamicPrefab {
     }
 }
 
-struct ComponentWrapper<T>(PhantomData<T>);
-
-impl<T> SerializeDynamic for ComponentWrapper<T>
+impl<T> SerializeDynamic for PhantomData<T>
 where
     for<'a> T: PrefabData<'a, Result = ()> + Serialize + DeserializeOwned + Send + Sync,
 {
@@ -101,6 +99,7 @@ trait SerializeDynamic: Send + Sync {
 struct DynamicPrefabAccessor {
     reads: Vec<ResourceId>,
     writes: Vec<ResourceId>,
+    setup: Vec<Box<dyn SystemDataSetup + Send + Sync>>,
 }
 
 impl Accessor for DynamicPrefabAccessor {
@@ -114,5 +113,18 @@ impl Accessor for DynamicPrefabAccessor {
 
     fn writes(&self) -> Vec<ResourceId> {
         self.writes.clone()
+    }
+}
+
+trait SystemDataSetup {
+    fn setup(&self, res: &mut Resources);
+}
+
+impl<T> SystemDataSetup for PhantomData<T>
+where
+    for<'a> T: PrefabData<'a>,
+{
+    fn setup(&self, res: &mut Resources) {
+        T::SystemData::setup(res);
     }
 }

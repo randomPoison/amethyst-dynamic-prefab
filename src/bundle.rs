@@ -1,5 +1,5 @@
 use crate::system::PrefabLoaderSystem;
-use crate::{ComponentWrapper, DynamicPrefabAccessor, SerializeDynamic, SerializerMap};
+use crate::{DynamicPrefabAccessor, SerializeDynamic, SerializerMap, SystemDataSetup};
 use amethyst::assets::PrefabData;
 use amethyst::core::bundle::SystemBundle;
 use amethyst::ecs::*;
@@ -7,6 +7,7 @@ use amethyst::shred::*;
 use log::*;
 use serde::de::DeserializeOwned;
 use serde::*;
+use std::marker::PhantomData;
 use type_uuid::amethyst_types::*;
 use type_uuid::*;
 use uuid::*;
@@ -16,6 +17,7 @@ pub struct DynamicPrefabBundle {
     serializer_map: SerializerMap,
     reads: Vec<ResourceId>,
     writes: Vec<ResourceId>,
+    setup: Vec<Box<dyn SystemDataSetup + Send + Sync>>,
 }
 
 impl DynamicPrefabBundle {
@@ -39,14 +41,16 @@ impl DynamicPrefabBundle {
         let uuid = Uuid::from(Uuid::from_bytes(T::UUID));
         debug!("Registering component with UUID {}", uuid);
 
-        let serializer =
-            Box::new(ComponentWrapper::<T>(Default::default())) as Box<SerializeDynamic>;
+        let serializer = Box::new(PhantomData::<T>) as Box<dyn SerializeDynamic>;
         self.serializer_map.insert(uuid, serializer);
 
         // Add a record of all the resource types that component needs in order to be
         // instantiated.
         self.reads.extend_from_slice(&T::SystemData::reads());
         self.writes.extend_from_slice(&T::SystemData::writes());
+
+        let setup = Box::new(PhantomData::<T>) as Box<dyn SystemDataSetup + Send + Sync>;
+        self.setup.push(setup);
     }
 }
 
@@ -58,6 +62,7 @@ impl<'a, 'b> SystemBundle<'a, 'b> for DynamicPrefabBundle {
         let accessor = DynamicPrefabAccessor {
             reads: self.reads,
             writes: self.writes,
+            setup: self.setup,
         };
 
         dispatcher.add(
