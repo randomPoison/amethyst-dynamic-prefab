@@ -1,0 +1,15 @@
+[package]
+name = "type-uuid-derive"
+version = "0.1.0"
+authors = ["David LeGare <dlegare.1001@gmail.com>"]
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+darling = "0.8.1"
+proc-macro2 = "0.4.24"
+syn = "0.15.23"
+quote = "0.6.10"
+uuid = "0.7.1"
