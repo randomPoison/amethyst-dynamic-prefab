@@ -13,8 +13,6 @@ use amethyst_dynamic_prefab::*;
 use amethyst_editor_sync::*;
 use tap::*;
 
-// type MyPrefabData = BasicScenePrefab<Vec<PosNormTex>>;
-
 struct AssetsExample;
 
 impl SimpleState for AssetsExample {
@@ -48,5 +46,6 @@ fn main() -> Result<(), Error> {
 
     let mut game = Application::new(resources_directory, AssetsExample, game_data)?;
     game.run();
+
     Ok(())
 }
