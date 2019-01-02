@@ -17,7 +17,7 @@ pub struct DynamicPrefabBundle {
     serializer_map: SerializerMap,
     reads: Vec<ResourceId>,
     writes: Vec<ResourceId>,
-    setup: Vec<Box<dyn SystemDataSetup + Send + Sync>>,
+    setup: Vec<Box<dyn SystemDataSetup>>,
 }
 
 impl DynamicPrefabBundle {
@@ -49,7 +49,7 @@ impl DynamicPrefabBundle {
         self.reads.extend_from_slice(&T::SystemData::reads());
         self.writes.extend_from_slice(&T::SystemData::writes());
 
-        let setup = Box::new(PhantomData::<T>) as Box<dyn SystemDataSetup + Send + Sync>;
+        let setup = Box::new(PhantomData::<T>) as Box<dyn SystemDataSetup>;
         self.setup.push(setup);
     }
 }

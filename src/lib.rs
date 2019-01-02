@@ -19,16 +19,109 @@ type SerializerMap = HashMap<Uuid, Box<dyn SerializeDynamic>>;
 type DynamicPrefabStorage = AssetStorage<DynamicPrefab>;
 
 /// The serialized representation of a prefab.
-type DynamicPrefabData = Vec<HashMap<Uuid, serde_json::Value>>;
+type IntermediatePrefabData = Vec<HashMap<Uuid, serde_json::Value>>;
+type TypedPrefabData = Vec<Vec<Box<dyn DynamicPrefabData>>>;
+
+enum IntermediateDataState {
+    Untyped(IntermediatePrefabData),
+    Typed(TypedPrefabData),
+}
+
+impl IntermediateDataState {
+    fn deserialize(self, serializer_map: &SerializerMap) -> Self {
+        let mut intermediate_data = match self {
+            IntermediateDataState::Untyped(data) => data,
+            IntermediateDataState::Typed(data) => return IntermediateDataState::Typed(data),
+        };
+
+        let typed_data = intermediate_data
+            .drain(..)
+            .map(|mut components| {
+                components.drain().filter_map(|(uuid, component_data)| {
+                    let serializer = match serializer_map.get(&uuid) {
+                        Some(serializer) => serializer,
+                        None => {
+                            // TODO: Would be good to also log the name/ID of the prefab so that
+                            // users can actually look at the prefab and see the component.
+                            error!("No serializer found for UUID {}, did you forget to register a component type?", uuid);
+                            return None;
+                        }
+                    };
+
+                    match serializer.instantiate(component_data) {
+                        Ok(prefab_data) => Some(prefab_data),
+                        Err(err) => {
+                            error!("Error deserializing component for UUID {}: {:?}", uuid, err);
+                            None
+                        }
+                    }
+                }).collect()
+            })
+            .collect();
+
+        IntermediateDataState::Typed(typed_data)
+    }
+}
+
+trait DynamicPrefabData: Send + Sync {
+    fn add_to_entity(
+        &self,
+        entity: Entity,
+        system_data: &Resources,
+        entities: &[Entity],
+    ) -> Result<(), PrefabError>;
+
+    fn load_sub_assets(
+        &mut self,
+        progress: &mut ProgressCounter,
+        system_data: &Resources,
+    ) -> Result<bool, PrefabError>;
+}
+
+impl<T> DynamicPrefabData for T
+where
+    for<'a> T: PrefabData<'a, Result = ()> + Send + Sync,
+{
+    fn add_to_entity(
+        &self,
+        entity: Entity,
+        resources: &Resources,
+        entities: &[Entity],
+    ) -> Result<(), PrefabError> {
+        let mut system_data = T::SystemData::fetch(resources);
+        PrefabData::add_to_entity(self, entity, &mut system_data, entities)
+    }
+
+    fn load_sub_assets(
+        &mut self,
+        progress: &mut ProgressCounter,
+        resources: &Resources,
+    ) -> Result<bool, PrefabError> {
+        let mut system_data = T::SystemData::fetch(resources);
+        PrefabData::load_sub_assets(self, progress, &mut system_data)
+    }
+}
 
 /// Asset type for dynamic prefabs.
 pub struct DynamicPrefab {
+    tag: u64,
+    entities: Vec<Vec<Box<dyn DynamicPrefabData>>>,
+}
+
+/// Intermediate representation for dynamic prefabs.
+///
+/// Dynamic prefabs are loaded in two phases: First the raw asset data is
+/// deserialized into an intermediate representation that leaves the component
+/// data anonymous. Then, the prefab loader system performs a second pass over
+/// the data and uses the type UUIDs to fully deserialize the data into their
+/// concrete types.
+pub struct IntermediateDynamicPrefab {
     tag: Option<u64>,
-    entities: DynamicPrefabData,
+    entities: IntermediateDataState,
     counter: Option<ProgressCounter>,
 }
 
-impl DynamicPrefab {
+impl IntermediateDynamicPrefab {
     /// Check if sub asset loading have been triggered.
     pub fn loading(&self) -> bool {
         self.counter.is_some()
@@ -46,26 +139,18 @@ impl DynamicPrefab {
     }
 
     /// Trigger sub asset loading for the asset
-    fn load_sub_assets<'a>(
-        &mut self,
-        serializer_map: &SerializerMap,
-        resources: &Resources,
-    ) -> Result<bool, PrefabError> {
+    fn load_sub_assets<'a>(&mut self, resources: &Resources) -> Result<bool, PrefabError> {
         let mut ret = false;
         let mut progress = ProgressCounter::default();
-        for entity in &mut self.entities {
-            for (uuid, component_data) in entity {
-                let serializer = match serializer_map.get(uuid) {
-                    Some(serializer) => serializer,
-                    None => {
-                        // TODO: Would be good to also log the name/ID of the prefab so that
-                        // users can actually look at the prefab and see the component.
-                        error!("No serializer found for UUID {}, did you forget to register a component type?", uuid);
-                        continue;
-                    }
-                };
-
-                if serializer.load_sub_assets(component_data, resources, &mut progress)? {
+        let entities = match &mut self.entities {
+            IntermediateDataState::Untyped(_) => {
+                unreachable!("Can't load sub-assets until component data has been deserialized")
+            }
+            IntermediateDataState::Typed(entities) => entities,
+        };
+        for entity in entities {
+            for dyn_prefab_data in entity {
+                if dyn_prefab_data.load_sub_assets(&mut progress, resources)? {
                     ret = true;
                 }
             }
@@ -77,19 +162,33 @@ impl DynamicPrefab {
 
 impl Asset for DynamicPrefab {
     const NAME: &'static str = "DYNAMIC_PREFAB";
-    type Data = Self;
+    type Data = IntermediateDynamicPrefab;
     type HandleStorage = FlaggedStorage<Handle<Self>, DenseVecStorage<Handle<Self>>>;
 }
 
-impl<'a> Deserialize<'a> for DynamicPrefab {
+impl From<IntermediateDynamicPrefab> for DynamicPrefab {
+    fn from(from: IntermediateDynamicPrefab) -> Self {
+        let tag = from
+            .tag
+            .expect("Tag wasn't initialized on intermediate data");
+        let entities = match from.entities {
+            IntermediateDataState::Typed(entities) => entities,
+            _ => panic!("Intermediate prefab data wasn't deserialized"),
+        };
+
+        Self { tag, entities }
+    }
+}
+
+impl<'a> Deserialize<'a> for IntermediateDynamicPrefab {
     fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
     where
         D: Deserializer<'a>,
     {
-        let data = DynamicPrefabData::deserialize(deserializer)?;
-        Ok(DynamicPrefab {
+        let data = IntermediatePrefabData::deserialize(deserializer)?;
+        Ok(Self {
             tag: None,
-            entities: data,
+            entities: IntermediateDataState::Untyped(data),
             counter: None,
         })
     }
@@ -97,59 +196,31 @@ impl<'a> Deserialize<'a> for DynamicPrefab {
 
 impl<T> SerializeDynamic for PhantomData<T>
 where
-    for<'a> T: PrefabData<'a, Result = ()> + Serialize + DeserializeOwned + Send + Sync,
+    for<'a> T: 'static + PrefabData<'a, Result = ()> + Serialize + DeserializeOwned + Send + Sync,
 {
     fn instantiate(
         &self,
-        data: &serde_json::Value,
-        entity: Entity,
-        resources: &Resources,
-        entities: &[Entity],
-    ) -> Result<(), PrefabError> {
+        data: serde_json::Value,
+    ) -> Result<Box<dyn DynamicPrefabData>, PrefabError> {
         debug!("Deserializing from {:?}", data);
 
         let prefab_data = T::deserialize(data.clone())
             .map_err(|err| PrefabError::Custom(amethyst::ecs::error::BoxedErr::new(err)))?;
-        let mut system_data = T::SystemData::fetch(resources);
-        prefab_data.add_to_entity(entity, &mut system_data, entities)
-    }
-
-    fn load_sub_assets(
-        &self,
-        data: &serde_json::Value,
-        resources: &Resources,
-        progress: &mut ProgressCounter,
-    ) -> Result<bool, PrefabError> {
-        debug!("Loading sub-assets for {:?}", data);
-
-        let mut prefab_data = T::deserialize(data.clone())
-            .map_err(|err| PrefabError::Custom(amethyst::ecs::error::BoxedErr::new(err)))?;
-        let mut system_data = T::SystemData::fetch(resources);
-        prefab_data.load_sub_assets(progress, &mut system_data)
+        Ok(Box::new(prefab_data) as Box<dyn DynamicPrefabData>)
     }
 }
 
 trait SerializeDynamic: Send + Sync {
     fn instantiate(
         &self,
-        data: &serde_json::Value,
-        entity: Entity,
-        resources: &Resources,
-        entities: &[Entity],
-    ) -> Result<(), PrefabError>;
-
-    fn load_sub_assets(
-        &self,
-        data: &serde_json::Value,
-        resources: &Resources,
-        progress: &mut ProgressCounter,
-    ) -> Result<bool, PrefabError>;
+        data: serde_json::Value,
+    ) -> Result<Box<dyn DynamicPrefabData>, PrefabError>;
 }
 
 struct DynamicPrefabAccessor {
     reads: Vec<ResourceId>,
     writes: Vec<ResourceId>,
-    setup: Vec<Box<dyn SystemDataSetup + Send + Sync>>,
+    setup: Vec<Box<dyn SystemDataSetup>>,
 }
 
 impl Accessor for DynamicPrefabAccessor {
@@ -166,13 +237,13 @@ impl Accessor for DynamicPrefabAccessor {
     }
 }
 
-trait SystemDataSetup {
+trait SystemDataSetup: Send + Sync {
     fn setup(&self, res: &mut Resources);
 }
 
 impl<T> SystemDataSetup for PhantomData<T>
 where
-    for<'a> T: PrefabData<'a>,
+    for<'a> T: PrefabData<'a> + Send + Sync,
 {
     fn setup(&self, res: &mut Resources) {
         T::SystemData::setup(res);

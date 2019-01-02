@@ -82,24 +82,33 @@ impl<'a> System<'a> for PrefabLoaderSystem {
 
         let strategy = data.strategy.as_ref().map(Deref::deref);
         data.prefab_storage.process(
-            |mut d| {
-                d.tag = Some(self.next_tag);
+            |mut intermediate| {
+                // Create a tag for the prefab.
+                intermediate.tag = Some(self.next_tag);
                 self.next_tag += 1;
-                if !d.loading() {
-                    if !d
-                        .load_sub_assets(&self.serializer_map, &dynamic_data)
+
+                // Deserialize the intermediate data into the concrete prefab data.
+                intermediate.entities = intermediate.entities.deserialize(&self.serializer_map);
+
+                if !intermediate.loading() {
+                    if !intermediate
+                        .load_sub_assets(&dynamic_data)
                         .chain_err(|| "Failed starting sub asset loading")?
                     {
-                        return Ok(ProcessingState::Loaded(d));
+                        return Ok(ProcessingState::Loaded(intermediate.into()));
                     }
                 }
-                match d.progress().complete() {
-                    Completion::Complete => Ok(ProcessingState::Loaded(d)),
+
+                match intermediate.progress().complete() {
+                    Completion::Complete => Ok(ProcessingState::Loaded(intermediate.into())),
                     Completion::Failed => {
-                        error!("Failed loading sub asset: {:?}", d.progress().errors());
+                        error!(
+                            "Failed loading sub asset: {:?}",
+                            intermediate.progress().errors()
+                        );
                         Err("Failed loading sub asset")?
                     }
-                    Completion::Loading => Ok(ProcessingState::Loading(d)),
+                    Completion::Loading => Ok(ProcessingState::Loading(intermediate)),
                 }
             },
             data.time.frame_number(),
@@ -144,30 +153,14 @@ impl<'a> System<'a> for PrefabLoaderSystem {
                     // }
 
                     data.tags
-                        .insert(
-                            new_entity,
-                            DynamicPrefabTag::new(prefab.tag.expect(
-                                "Unreachable: Every loaded prefab should have a `PrefabTag`",
-                            )),
-                        )
+                        .insert(new_entity, DynamicPrefabTag::new(prefab.tag))
                         .expect("Unable to insert `PrefabTag` for prefab entity");
                 }
 
                 // TODO: Create components.
                 for (index, entity_data) in prefab.entities.iter().enumerate() {
-                    for (uuid, serialized_component) in entity_data {
-                        let serializer = match self.serializer_map.get(uuid) {
-                            Some(serializer) => serializer,
-                            None => {
-                                // TODO: Would be good to also log the name/ID of the prefab so that
-                                // users can actually look at the prefab and see the component.
-                                error!("No serializer found for UUID {}, did you forget to register a component type?", uuid);
-                                continue;
-                            }
-                        };
-
-                        if let Err(err) = serializer.instantiate(
-                            serialized_component,
+                    for dyn_prefab_data in entity_data {
+                        if let Err(err) = dyn_prefab_data.add_to_entity(
                             self.entities[index],
                             &dynamic_data,
                             &self.entities,
