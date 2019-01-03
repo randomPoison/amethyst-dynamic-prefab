@@ -1,9 +1,8 @@
 extern crate proc_macro;
 
-use darling::*;
 use proc_macro::*;
 use quote::quote;
-use syn;
+use syn::*;
 use uuid::Uuid;
 
 #[proc_macro_derive(TypeUuid, attributes(uuid))]
@@ -17,31 +16,45 @@ pub fn hello_macro_derive(input: proc_macro::TokenStream) -> proc_macro::TokenSt
 }
 
 fn impl_hello_macro(ast: &syn::DeriveInput) -> TokenStream {
-    let opts = MyTraitOpts::from_derive_input(ast).expect("Invalid derive input");
+    let name = &ast.ident;
 
-    let name = &opts.ident;
+    let mut uuid = None;
+    for attribute in ast.attrs.iter().filter_map(|attr| attr.parse_meta().ok()) {
+        let name_value = if let Meta::NameValue(name_value) = attribute {
+            name_value
+        } else {
+            continue;
+        };
 
-    let uuid = Uuid::parse_str(&opts.uuid.uuid_str).expect("Invalid UUID string");
-    let bytes = uuid.as_bytes().iter().map(|byte| format!("{:#X}", byte));
+        if name_value.ident != "uuid" {
+            continue;
+        }
+
+        let uuid_str = match name_value.lit {
+            Lit::Str(lit_str) => lit_str,
+            _ => panic!("uuid attribute must take the form `#[uuid = \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\"`"),
+        };
+
+        uuid = Some(
+            Uuid::parse_str(&uuid_str.value())
+                .expect("Value specified to `#[uuid]` attribute is not a valid UUID"),
+        );
+    }
+
+    let uuid =
+        uuid.expect("No `#[uuid = \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\"` attribute found");
+    let bytes = uuid
+        .as_bytes()
+        .iter()
+        .map(|byte| format!("{:#X}", byte))
+        .map(|byte_str| syn::parse_str::<proc_macro2::Literal>(&byte_str).unwrap());
 
     let gen = quote! {
-        impl TypeUuid for #name {
-            const UUID: uuid::Bytes = [
+        impl type_uuid::TypeUuid for #name {
+            const UUID: type_uuid::Bytes = [
                 #( #bytes ),*
             ];
         }
     };
     gen.into()
-}
-
-#[derive(FromDeriveInput)]
-#[darling(attributes(uuid))]
-struct MyTraitOpts {
-    ident: syn::Ident,
-    uuid: UuidAttr,
-}
-
-#[derive(Default, FromMeta)]
-struct UuidAttr {
-    uuid_str: String,
 }

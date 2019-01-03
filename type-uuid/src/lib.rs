@@ -1,3 +1,7 @@
+// Re-export the `Bytes` type so that we can reference it in derived code
+// without requiring the user to explicitly depend on the uuid crate.
+pub use uuid::Bytes;
+
 #[cfg(feature = "amethyst")]
 pub mod amethyst_types;
 
