@@ -2,20 +2,27 @@
 // without requiring the user to explicitly depend on the uuid crate.
 pub use uuid::Bytes;
 
+#[doc(hidden)]
+pub use type_uuid_derive::*;
+
 #[cfg(feature = "amethyst")]
 pub mod amethyst_types;
 
-/// Provides a statically defined UUID for a Rust type.  It's recommended to implement this
-/// by generating a v4 UUID, and transmuting it into a `u128`.  Here's an example of how to do so
+/// Provides a statically defined UUID for a Rust type.
+///
+/// # Examples
+///
+/// This crate provides a custom derive that allows you to specify a UUID as
+/// a human-readable string. This is the recommended way to implement `TypeUuid`
+/// for your types. You can use https://www.uuidgenerator.net to generate
+/// random UUIDs to use with the derive.
 ///
 /// ```
-/// extern crate uuid;
-/// use std::mem::transmute;
-/// use uuid::Uuid;
+/// use type_uuid::TypeUuid;
 ///
-/// fn main() {
-///     println!("{}", unsafe {transmute::<[u8; 16], u128>(*Uuid::new_v4().as_bytes())});
-/// }
+/// #[derive(TypeUuid)]
+/// #[uuid = "d4adfc76-f5f4-40b0-8e28-8a51a12f5e46"]
+/// struct MyType;
 /// ```
 pub trait TypeUuid {
     const UUID: uuid::Bytes;
